@@ -8,17 +8,17 @@ class Main:
         'group.id': "group1",
         'auto.offset.reset': 'earliest'}
         self.consumer = Consumer(conf)
+        self.min_commit_count = 10
         self.running = True
-        self.min_commit_count = 100
-
-    def consume_loop(consumer, topics):
+    def consume_loop(self, topics):
         try:
-            consumer.subscribe(topics)
+            self.consumer.subscribe(topics)
 
             msg_count = 0
+            
             # extractor - consumer
-            while running:
-                msg = consumer.poll(timeout=1.0)
+            while self.running:
+                msg = self.consumer.poll(timeout=1.0)
                 if msg is None: 
                     continue
 
@@ -31,19 +31,24 @@ class Main:
                         raise KafkaException(msg.error())
                 else:
                     # transformer - change data
-                    # msg_process(msg)
+                    msg_json = json.loads('{}'.format(msg.value().decode('utf-8')))
 
+                    if msg_json.get('extended_tweet'):
+                        print(msg_json['extended_tweet']['full_text'])
+                    else:
+                        print(msg_json['text'])
                     # loader - save to couchbase - nosql
                     msg_count += 1
-                    if msg_count % min_commit_count == 0:
-                        consumer.commit(async=False)
+                    if msg_count % self.min_commit_count == 0:
+                        self.consumer.commit(async=False)
         finally:
             # Close down consumer to commit final offsets.
-            consumer.close()
+            self.consumer.close()
 
     def shutdown():
-        running = False
+        self.running = False
 
 if __name__ == "__main__":
     main = Main()
-    main.consume_loop("stockmarket")
+    topics=["stockmarket"]
+    main.consume_loop(topics)
