@@ -1,0 +1,12 @@
+bitcoin
+ethereum
+binance coin
+dogecoin
+xrp
+tether
+cardano
+polkadot
+bitcoin cash
+litecoin
+uniswap
+chainlink
