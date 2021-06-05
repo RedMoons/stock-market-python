@@ -43,29 +43,28 @@ class Main:
                     text = text.encode('utf-8')
                     word_list = str(text).split(' ')
 
-                    print('word_list', word_list)
+                    #print('word_list', word_list)
 
 
-                    keys = [k for k in self.redis.keys('*')]
+                    keys = [k.decode('utf-8') for k in self.redis.keys('*')]
                     for k in word_list:
                         k = k.lower()
                         if not k in keys:
                             continue
                         ## loader - save to redis
                         count = self.redis.get(k)
-                        if k is not None and obj is not None:
+                        if k is not None:
 
                             
                             count = int(count)
                             count += 1
-                            print('update redis : key=%s, count=%s',k,count)
+                            print('update redis : key, count=',k,count)
                             self.redis.set(k, count)
-
-                            msg_count += 1
-                            if msg_count % self.min_commit_count == 0:
-                                self.consumer.commit(async=False)
+        except:
+            raise Exception('consumer loop fail')
         finally:
             ## Close down consumer to commit final offsets.
+            self.consumer.commit(async=False) 
             self.consumer.close()
 
     def shutdown():
