@@ -1,7 +1,7 @@
 from confluent_kafka import Consumer
 import json
 from datetime import datetime
-import redis
+import redis, json, ast
 
 class Main:
     def __init__(self):
@@ -12,6 +12,7 @@ class Main:
         self.min_commit_count = 1
         self.running = True
         self.redis = redis.Redis(host='localhost', port=6379, db=0)
+
     def consume_loop(self, topics):
         try:
             self.consumer.subscribe(topics)
@@ -69,6 +70,17 @@ class Main:
 
     def shutdown():
         self.running = False
+
+    def get_top_count(self):
+        keys = [k for k in redis.keys('*')]
+
+        count_list = {}
+        for k in keys:
+            count_list[k] = ast.literal_eval(redis.get(k).decode('utf-8'))['count']
+
+        top_count = list(sorted(count_list.items, key = lambda item: item[1]))[:10]
+
+        return top_count
 
 if __name__ == "__main__":
     main = Main()
