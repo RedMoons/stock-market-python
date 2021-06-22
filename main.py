@@ -12,6 +12,7 @@ class Main:
         self.min_commit_count = 1
         self.running = True
         self.redis = redis.Redis(host='localhost', port=6379, db=0)
+        self.max_message = 10
 
     def consume_loop(self, topics):
         try:
@@ -23,51 +24,48 @@ class Main:
             while self.running:
                 msg, text = '', ''
                 keyword_list = []
-                msg = self.consumer.poll(timeout=1.0)
-                if msg is None: 
-                    continue
 
-                if msg.error():
-                    # End of partition event
-                    print('error handling')
-                    #raise KafkaException(msg.error())
-                else:
-                    ## transformer - change data
-                    msg_json = json.loads('{}'.format(msg.value().decode('utf-8')))
+                for i in range(max_message):
+                    msg = self.consumer.poll(timeout=1.0)
+                    if msg is None: 
+                        continue
 
-                    #print('msg_json', msg_json)
-                    if msg_json.get('extended_tweet'):
-                        text = msg_json['extended_tweet']['full_text']
-                    else:
-                        text = msg_json['text']
-                    text = text.encode('utf-8')
-                    word_list = str(text).split(' ')
+                    if msg.error():
+                        # End of partition event
+                        print('error handling')
+                        break
+                        #raise KafkaException(msg.error())
+			## transformer - change data
+                        msg_json = json.loads('{}'.format(msg.value().decode('utf-8')))
+                        if msg_json.get('extended_tweet'):
+                            text = msg_json['extended_tweet']['full_text']
+                        else:
+                            text = msg_json['text']
+                        text = text.encode('utf-8')
+                        word_list = str(text).split(' ')
 
-                    #print('word_list', word_list)
-
-
-                    keys = [k.decode('utf-8') for k in self.redis.keys('*')]
-                    for k in word_list:
-                        k = k.lower()
-                        if not k in keys:
-                            continue
-                        ## loader - save to redis
-                        count = self.redis.get(k)
-                        if k is not None:
-
-                            
-                            count = int(count)
-                            count += 1
-                            print('update redis : key, count=',k,count)
-                            self.redis.set(k, count)
+                        keys = [k.decode('utf-8') for k in self.redis.keys('*')]
+                        for k in word_list:
+                            k = k.lower()
+                            if not k in keys:
+                                continue
+                            ## loader - save to redis
+                            count = self.redis.get(k)
+                            if k is not None:
+                                count = int(count)
+                                count += 1
+                                print('update redis : ',k,count)
+                                self.redis.set(k, count)
+                if self.running:
+                    break
         except:
             raise Exception('consumer loop fail')
         finally:
             ## Close down consumer to commit final offsets.
             self.consumer.commit(async=False) 
             self.consumer.close()
-
-    def shutdown():
+            self.shutdown()
+    def shutdown(self):
         self.running = False
 
     def get_top_count(self):
